@@ -1,0 +1,202 @@
+<!doctype html>
+<html>
+	<head>
+		<title>Eduardo Gibaja</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		
+			
+		<script src="vendor/three.js/three.min.js"></script>
+		<script src="vendor/three.js/Detector.js"></script>
+		<!-- https://github.com/mrdoob/stats.js -->
+		<script src="vendor/three.js/Stats.js"></script>
+
+		<script src="vendor/threex/THREEx.FullScreen.js"></script>
+		<script src="vendor/threex/THREEx.WindowResize.js"></script>
+		<script src="vendor/threex.dragpancontrols.js"></script>
+
+		<link  href="css/main.css" rel="stylesheet"/>
+	</head>
+	<body>
+		<!-- three.js container -->
+	    	<div id="container"></div>
+		<!-- info on screen display -->
+		<div id="info">
+			<div class="bottom" id="inlineDoc" >
+			</div> 
+		</div> 
+
+		<script type="text/javascript">
+			var stats, scene, renderer, composer, raycaster, mouse;
+			var camera, cameraControl, glight, glight2, l1, l2, point;
+
+			if( !init() )	animate();
+
+			// init the scene
+			function init(){
+
+				if( Detector.webgl ){
+					renderer = new THREE.WebGLRenderer({
+						antialias		: true,	// to get smoother output
+						preserveDrawingBuffer	: true	// to allow screenshot
+					});
+					renderer.setClearColor( 0x101010 );
+				}else{
+					Detector.addGetWebGLMessage();
+					return true;
+				}
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				document.getElementById('container').appendChild(renderer.domElement);
+
+				// add Stats.js - https://github.com/mrdoob/stats.js
+				stats = new Stats();
+				stats.domElement.style.position	= 'absolute';
+				stats.domElement.style.bottom	= '0px';
+				document.body.appendChild( stats.domElement );
+
+				// create a scene
+				scene = new THREE.Scene();
+
+				// put a camera in the scene
+				camera	= new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 1, 10000 );
+				camera.position.set(0, 0, 10);
+				scene.add(camera);
+
+				// create a camera contol
+				cameraControls	= new THREEx.DragPanControls(camera);
+
+				// transparently support window resize
+				THREEx.WindowResize.bind(renderer, camera);
+				// allow 'f' to go fullscreen where this feature is supported
+				if( THREEx.FullScreen.available() ){
+					THREEx.FullScreen.bindKey();		
+					document.getElementById('inlineDoc').innerHTML	+= "- <i>f</i> for fullscreen";
+				}
+
+				raycaster = new THREE.Raycaster();
+				mouse = new THREE.Vector2();
+
+				// here you add your objects
+				// - you will most likely replace this part by your own
+				var light	= new THREE.AmbientLight(0xffffff );
+				scene.add( light );
+				
+				var ilight	= new THREE.IcosahedronGeometry( 0.05, 3);
+				var mat1 = new THREE.MeshLambertMaterial({color: "rgb(250,250,250)", emissive: "rgb(250,250,250)"});
+				var mat2 = new THREE.MeshLambertMaterial({color: "rgb(240,240,240)", emissive: "rgb(240,240,240)"});
+				glight = new THREE.Mesh( ilight, mat1 );
+				scene.add( glight );
+				glight2 = new THREE.Mesh( ilight, mat2 );
+				scene.add( glight2 );
+
+				var pointmesh	= new THREE.IcosahedronGeometry( 0.1, 3);
+				var pointmat = new THREE.MeshLambertMaterial({color: 0xffffff, emissive: 0xffffff});
+				point = new THREE.Mesh( pointmesh, pointmat );
+		
+				l1	= new THREE.PointLight( "rgb(200,200,200)" );
+				glight.position.copy(l1.position);
+				scene.add( l1 );
+				l2	= new THREE.PointLight( "rgb(240,240,240)" );
+				glight2.position.copy(l2.position);
+				scene.add( l2 );
+			
+
+				var geometry	= new THREE.IcosahedronGeometry(1, 1);
+
+				var urls = [
+				  'img/pos-x.png',
+				  'img/neg-x.png',
+				  'img/pos-y.png',
+				  'img/neg-y.png',
+				  'img/pos-z.png',
+				  'img/neg-z.png'
+				];
+				// wrap it up into the object that we need
+				var cubemap = THREE.ImageUtils.loadTextureCube(urls);
+
+				// set the format, likely RGB unless you've gone crazy
+				cubemap.format = THREE.RGBFormat;
+				var material	= new THREE.MeshPhongMaterial({
+					shading: THREE.FlatShading,
+					envMap: cubemap,
+					color: 0xff0000,
+					emissive: "rgb(255,220,0)",
+			        reflectivity: 0.7,
+			        specular: "rgb(250,250,250)",
+				});
+
+				var material2	= new THREE.MeshPhongMaterial({
+					shading: THREE.FlatShading,
+					envMap: cubemap,
+					color: 0x004400,
+					emissive: "rgb(30, 190, 25)",
+			        reflectivity: 0.5,
+			        specular: "rgb(230,250,230)",
+				});
+
+				var material3	= new THREE.MeshPhongMaterial({
+					shading: THREE.FlatShading,
+					envMap: cubemap,
+					color: 0xff0000,
+					emissive: "rgb(14, 16, 240)",
+			        reflectivity: 0.7,
+			        specular: "rgb(250,250,250)",
+				});
+
+				var mesh	= new THREE.Mesh( geometry, material ); 
+				scene.add( mesh );
+
+				var mesh2	= new THREE.Mesh( geometry, material2 ); 
+				mesh2.position.set(3,0,0);
+				scene.add(mesh2);
+
+				var mesh3	= new THREE.Mesh( geometry, material3 ); 
+				mesh3.position.set(-3,0,0);
+				scene.add(mesh3);
+			}
+
+			function getIntersectPoint( event ) {
+				// update the picking ray with the camera and mouse position	
+				raycaster.setFromCamera( mouse, camera );	
+
+				// calculate objects intersecting the picking ray
+				var intersects = raycaster.intersectObjects( scene.children );
+
+				for ( var i = 0; i < intersects.length; i++ ) {
+
+					console.log(intersects[ i ].point);
+					point.position.copy(intersects[ i ].point);
+					console.log(intersects[ i ].point);
+					intersects[ i ].object.material.color.set(0x000000);
+				}
+			}
+
+			// animation loop
+			function animate() {
+				requestAnimationFrame( animate );
+				render();
+				stats.update();
+			}
+
+			function render() {
+				// variable which is increase by Math.PI every seconds - usefull for animation
+				var PIseconds	= Date.now() * Math.PI;
+
+				cameraControls.update();
+
+				var ang1	= 0.0005 * PIseconds * (-1);
+				l1.position.set(Math.cos(ang1), Math.sin(ang1), Math.cos(ang1*2)).normalize().multiplyScalar(5);
+				glight.position.copy(l1.position);
+
+				var ang2	= 0.0007 * PIseconds;
+				l2.position.set(Math.sin(ang2), Math.cos(ang2), Math.cos(ang2*2)).normalize().multiplyScalar(2.5);
+				glight2.position.copy(l2.position);
+
+				renderer.render( scene, camera );
+			}
+
+			window.addEventListener( 'click', getIntersectPoint, false );
+
+		</script>
+	</body>
+</html>
